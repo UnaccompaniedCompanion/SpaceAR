@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Space AR — Explore the Cosmos</title>
+  <meta name="description" content="A modern, responsive, web-native AR site with space facts and interactive 3D objects." />
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#060714; /* deep space */
+      --bg-2:#0d0f2a;
+      --ink:#e8ecff;
+      --muted:#aab1d6;
+      --accent:#7a5cff; /* nebula violet */
+      --accent-2:#00d4ff; /* cyan */
+      --glow: 0 0 24px rgba(122,92,255,.45), 0 0 48px rgba(0,212,255,.2);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--ink); background:radial-gradient(1200px 800px at 70% -10%,rgba(122,92,255,.12),transparent),
+                radial-gradient(900px 700px at 20% 110%,rgba(0,212,255,.12),transparent),
+                var(--bg);
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,sans-serif;
+      line-height:1.6;
+      overflow-x:hidden;
+    }
+    a{color:var(--accent-2); text-decoration:none}
+    a:hover{text-decoration:underline}
+
+    /* Top Navigation */
+    header{position:sticky; top:0; z-index:50; background:linear-gradient(180deg,rgba(6,7,20,.9),rgba(6,7,20,.6) 60%,transparent); backdrop-filter: blur(8px);}
+    .nav{max-width:1200px; margin:0 auto; display:flex; align-items:center; gap:.75rem; padding: .8rem 1rem;}
+    .brand{font-family:Orbitron,Inter,sans-serif; letter-spacing:.04em; font-weight:700; display:flex; align-items:center; gap:.6rem}
+    .logo{width:28px; height:28px; border-radius:50%; background:conic-gradient(from 220deg at 50% 50%, var(--accent), var(--accent-2), var(--accent)); box-shadow: var(--glow)}
+    .spacer{flex:1}
+    .nav a{padding:.4rem .7rem; border-radius:999px}
+    .nav a:hover{background: rgba(122,92,255,.15)}
+    .search{position:relative; max-width:360px; flex:1}
+    .search input{width:100%; padding:.7rem 2.2rem .7rem .9rem; border-radius:999px; border:1px solid rgba(255,255,255,.1); background:rgba(13,15,42,.8); color:var(--ink)}
+    .search svg{position:absolute; right:.6rem; top:50%; transform:translateY(-50%); opacity:.7}
+
+    /* Hero */
+    .hero{position:relative; min-height:72vh; display:grid; place-items:center; overflow:hidden}
+    .hero-inner{display:grid; grid-template-columns:1.2fr .8fr; gap:1.5rem; align-items:center; width:min(1200px,92vw); padding:3rem 1rem}
+    .hero h1{font-family:Orbitron,Inter,sans-serif; font-size: clamp(2rem, 4.8vw, 4rem); line-height:1.1; margin:.2rem 0 1rem}
+    .hero p{color:var(--muted); font-size:clamp(1rem,1.4vw,1.125rem)}
+    .cta{display:flex; gap:.8rem; margin-top:1rem}
+    .btn{display:inline-flex; align-items:center; gap:.5rem; padding:.8rem 1rem; border-radius:14px; border:1px solid rgba(255,255,255,.12); background:linear-gradient(180deg, rgba(122,92,255,.25), rgba(0,212,255,.18)); box-shadow: var(--glow); font-weight:600}
+    .btn.secondary{background:rgba(13,15,42,.7)}
+    canvas.hero-3d{width:100%; height:60vh; min-height:320px; border-radius:18px; background:radial-gradient(450px 300px at 60% 10%,rgba(122,92,255,.1),transparent), #050614; box-shadow:0 8px 40px rgba(0,0,0,.35)}
+
+    /* Sections */
+    section{padding: 3rem 0; position:relative}
+    .wrap{width:min(1200px,92vw); margin:0 auto; padding:0 1rem}
+    .section-title{font-family:Orbitron; font-size: clamp(1.4rem,3.2vw,2.2rem); margin:0 0 1rem}
+    .grid{display:grid; grid-template-columns:repeat(12,1fr); gap:1rem}
+    .card{grid-column: span 6; background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); padding:1rem; border-radius:16px}
+    @media (max-width:900px){ .hero-inner{grid-template-columns:1fr} .card{grid-column: span 12} }
+
+    details{background:rgba(0,0,0,.2); border:1px solid rgba(255,255,255,.06); padding:.8rem 1rem; border-radius:12px; margin:.6rem 0}
+    summary{cursor:pointer; font-weight:600}
+
+    .fact{display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.7rem 1rem; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:12px; margin:.5rem 0}
+    .fact small{color:var(--muted)}
+    .fact .ar-buttons{display:flex; gap:.5rem; flex-wrap:wrap}
+
+    .ar-btn{display:inline-flex; align-items:center; gap:.4rem; padding:.5rem .7rem; border-radius:10px; border:1px solid rgba(255,255,255,.14); background:rgba(10,12,36,.8)}
+    .ar-btn:hover{background:rgba(10,12,36,.95)}
+
+    /* Parallax band */
+    .parallax{position:relative; height:220px; overflow:hidden; border-block: 1px solid rgba(255,255,255,.06); margin:2rem 0;}
+    .parallax .layer{position:absolute; inset:-10% -10%; background-size:cover; background-position:center; will-change:transform;}
+
+    /* Shooting stars canvas */
+    #stars{position:fixed; inset:0; z-index:-1;}
+
+    footer{padding:2rem 0; color:var(--muted); text-align:center}
+  </style>
+</head>
+<body>
+  <canvas id="stars" aria-hidden="true"></canvas>
+  <header>
+    <nav class="nav">
+      <div class="brand"><div class="logo"></div> <span>Space AR</span></div>
+      <a href="#planets">Planets</a>
+      <a href="#stars-sec">Stars</a>
+      <a href="#galaxies">Galaxies</a>
+      <a href="#exploration">Space Exploration</a>
+      <a href="#fun-facts">Fun Facts</a>
+      <div class="spacer"></div>
+      <div class="search">
+        <input id="search" placeholder="Search facts… (e.g., black holes)" aria-label="Search facts" />
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/></svg>
+      </div>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <h1>Explore the Cosmos in <span style="color:var(--accent-2)">AR</span></h1>
+        <p>Tap <strong>View in AR</strong> to place the Moon, Mars, or even the ISS right in your room. Scroll for curated facts, or dive deeper with expandable explainers. Everything is built for the open web — no app required.</p>
+        <div class="cta">
+          <a href="#planets" class="btn">Start Exploring</a>
+          <a href="#exploration" class="btn secondary">Space Missions</a>
+        </div>
+      </div>
+      <canvas class="hero-3d" id="earthCanvas" aria-label="Rotating 3D Earth"></canvas>
+    </div>
+  </section>
+
+  <div class="parallax" aria-hidden="true">
+    <div class="layer" id="para1" style="background-image:url('https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?q=80&w=1600&auto=format&fit=crop'); opacity:.35"></div>
+  </div>
+
+  <!-- PLANETS -->
+  <section id="planets">
+    <div class="wrap">
+      <h2 class="section-title">Planets</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Moon</h3>
+          <div class="fact" data-tags="moon satellite tides apollo ar">
+            <div>
+              Earth’s Moon is tidally locked — the same side always faces us.
+              <br><small>Orbital period ≈ 27.3 days; synodic month ≈ 29.5 days.</small>
+            </div>
+            <div class="ar-buttons">
+              <button class="ar-btn" data-ar="moon">View in AR</button>
+            </div>
+          </div>
+          <details>
+            <summary>More about the Moon</summary>
+            <p>The Moon likely formed after a giant impact early in Earth’s history. Its surface preserves billions of years of craters and volcanic plains (maria).</p>
+          </details>
+        </div>
+        <div class="card">
+          <h3>Mars</h3>
+          <div class="fact" data-tags="mars planet red ar atmosphere">
+            <div>
+              Mars is about half Earth’s diameter with a thin CO₂ atmosphere.
+              <br><small>Surface features include Olympus Mons (largest volcano) and Valles Marineris (vast canyon system).</small>
+            </div>
+            <div class="ar-buttons">
+              <button class="ar-btn" data-ar="mars">View in AR</button>
+            </div>
+          </div>
+          <details>
+            <summary>More about Mars</summary>
+            <p>Seasonal polar ice caps contain water ice and dry ice. Past rover missions have found evidence of ancient liquid water.</p>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STARS -->
+  <section id="stars-sec">
+    <div class="wrap">
+      <h2 class="section-title">Stars</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>The Sun</h3>
+          <div class="fact" data-tags="sun star fusion hydrogen helioseismology">
+            <div>
+              The Sun generates energy by fusing hydrogen into helium in its core.
+              <br><small>Core temperature ≈ 15 million K; light takes ~8 minutes to reach Earth.</small>
+            </div>
+          </div>
+          <details>
+            <summary>Lifecycle & structure</summary>
+            <p>Our Sun is a G-type main-sequence star. Over billions of years it will expand into a red giant before becoming a white dwarf.</p>
+          </details>
+        </div>
+        <div class="card">
+          <h3>Neutron Stars</h3>
+          <div class="fact" data-tags="neutron star pulsar magnetar supernova">
+            <div>
+              Neutron stars pack more than the Sun’s mass into a ~20 km object.
+              <br><small>Some spin rapidly and beam radio waves — we call those pulsars.</small>
+            </div>
+          </div>
+          <details>
+            <summary>Why so dense?</summary>
+            <p>They are remnants of massive stars that exploded as supernovae, leaving behind ultra-dense cores supported by neutron degeneracy pressure.</p>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="parallax" aria-hidden="true">
+    <div class="layer" id="para2" style="background-image:url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1600&auto=format&fit=crop'); opacity:.35"></div>
+  </div>
+
+  <!-- GALAXIES -->
+  <section id="galaxies">
+    <div class="wrap">
+      <h2 class="section-title">Galaxies</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Milky Way</h3>
+          <div class="fact" data-tags="milky way galaxy spiral bar black hole">
+            <div>
+              The Milky Way is a barred spiral galaxy with a supermassive black hole, Sagittarius A*, at its center.
+              <br><small>Diameter ~100,000–200,000 light-years; ~100–400 billion stars.</small>
+            </div>
+          </div>
+          <details>
+            <summary>Spiral arms & bar</summary>
+            <p>Star formation is active in the spiral arms, while the central bar channels gas toward the core, influencing star birth and dynamics.</p>
+          </details>
+        </div>
+        <div class="card">
+          <h3>Elliptical Galaxies</h3>
+          <div class="fact" data-tags="elliptical galaxy older stars low gas">
+            <div>
+              Elliptical galaxies generally have older stellar populations and little cold gas.
+              <br><small>They range from dwarf ellipticals to giant ellipticals in galaxy clusters.</small>
+            </div>
+          </div>
+          <details>
+            <summary>Formation</summary>
+            <p>Often thought to form via mergers and interactions that scramble disk structures into spheroidal distributions.</p>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="parallax" aria-hidden="true">
+    <div class="layer" id="para3" style="background-image:url('https://images.unsplash.com/photo-1520962918287-7448c2878f65?q=80&w=1600&auto=format&fit=crop'); opacity:.35"></div>
+  </div>
+
+  <!-- SPACE EXPLORATION -->
+  <section id="exploration">
+    <div class="wrap">
+      <h2 class="section-title">Space Exploration</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>International Space Station (ISS)</h3>
+          <div class="fact" data-tags="iss orbit microgravity international ar">
+            <div>
+              The ISS orbits Earth about every 90 minutes at ~400 km altitude.
+              <br><small>It’s a microgravity lab for biology, physics, Earth observation, and more.</small>
+            </div>
+            <div class="ar-buttons">
+              <button class="ar-btn" data-ar="iss">View in AR</button>
+            </div>
+          </div>
+          <details>
+            <summary>Partners & research</summary>
+            <p>Built by a partnership of space agencies (NASA, Roscosmos, ESA, JAXA, CSA). It supports long-duration human spaceflight research.</p>
+          </details>
+        </div>
+        <div class="card">
+          <h3>Current Missions</h3>
+          <div class="fact" data-tags="artemis jwst mars rover europa clipper">
+            <div>
+              Highlights include NASA’s Artemis program for the Moon, Mars rovers exploring ancient environments, and JWST probing the early universe.
+              <br><small>Europa Clipper will study Jupiter’s icy moon Europa, launching mid-2020s.</small>
+            </div>
+          </div>
+          <details>
+            <summary>Why it matters</summary>
+            <p>Robotic and crewed missions expand scientific knowledge, test technologies, and pave the way for sustainable exploration beyond Earth.</p>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FUN FACTS -->
+  <section id="fun-facts">
+    <div class="wrap">
+      <h2 class="section-title">Fun Facts</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Black Holes</h3>
+          <div class="fact" data-tags="black holes event horizon gravity time dilation">
+            <div>
+              Black holes are regions where gravity is so strong that not even light can escape.
+              <br><small>Time dilation near the event horizon means time passes differently compared to far away.</small>
+            </div>
+          </div>
+          <details>
+            <summary>Misconceptions</summary>
+            <p>They don’t “vacuum” everything. Objects must cross the event horizon to be captured; otherwise, they orbit just like around any massive object.</p>
+          </details>
+        </div>
+        <div class="card">
+          <h3>Exoplanets</h3>
+          <div class="fact" data-tags="exoplanet transit radial velocity habitable">
+            <div>
+              Thousands of exoplanets are known, many found by watching stars dim as planets transit.
+              <br><small>Some are in the habitable zone where liquid water could exist.</small>
+            </div>
+          </div>
+          <details>
+            <summary>Detection methods</summary>
+            <p>Transit photometry, radial velocity (Doppler wobble), direct imaging, and gravitational microlensing are key techniques.</p>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Built with <strong>Three.js</strong> + WebXR. Textures © threejs.org & NASA/ESA where applicable. Photos via Unsplash. No app required.
+  </footer>
+
+  <!-- WebGL + WebXR (Three.js) -->
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.161.0/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.161.0/examples/jsm/controls/OrbitControls.js';
+    import { ARButton } from 'https://unpkg.com/three@0.161.0/examples/jsm/webxr/ARButton.js';
+
+    /* ---------- Rotating Earth in hero ---------- */
+    const earthCanvas = document.getElementById('earthCanvas');
+    const heroScene = new THREE.Scene();
+    const heroRenderer = new THREE.WebGLRenderer({ canvas: earthCanvas, antialias:true, alpha:true });
+    heroRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    function resizeHero(){
+      const w = earthCanvas.clientWidth; const h = earthCanvas.clientHeight;
+      heroRenderer.setSize(w, h, false);
+      heroCamera.aspect = w/h; heroCamera.updateProjectionMatrix();
+    }
+    const heroCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+    heroCamera.position.set(0, 0, 3.3);
+
+    const heroLight = new THREE.DirectionalLight(0xffffff, 1.1); heroLight.position.set(2,1,3);
+    const fill = new THREE.AmbientLight(0x8899ff, .25);
+    heroScene.add(heroLight, fill);
+
+    const texLoader = new THREE.TextureLoader();
+    const earthTex = texLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+    const earthBump = texLoader.load('https://threejs.org/examples/textures/planets/earth_bump_2048.jpg');
+    const earthSpec = texLoader.load('https://threejs.org/examples/textures/planets/earth_specular_2048.jpg');
+    const earthGeo = new THREE.SphereGeometry(1, 64, 64);
+    const earthMat = new THREE.MeshPhongMaterial({ map: earthTex, bumpMap: earthBump, bumpScale: 0.05, specularMap: earthSpec, shininess: 5 });
+    const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+
+    const cloudsTex = texLoader.load('https://threejs.org/examples/textures/planets/earth_clouds_1024.png');
+    const clouds = new THREE.Mesh(new THREE.SphereGeometry(1.01, 64, 64), new THREE.MeshLambertMaterial({ map: cloudsTex, transparent:true, opacity:.8 }));
+
+    const glowGeo = new THREE.SphereGeometry(1.2, 64, 64);
+    const glowMat = new THREE.MeshBasicMaterial({ color:0x7a5cff, transparent:true, opacity:.18 });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+
+    heroScene.add(earthMesh, clouds, glow);
+    const heroControls = new OrbitControls(heroCamera, earthCanvas);
+    heroControls.enableDamping = true; heroControls.enablePan = false; heroControls.minDistance = 2.4; heroControls.maxDistance = 4.6;
+
+    function heroTick(){
+      earthMesh.rotation.y += 0.0009; clouds.rotation.y += 0.0012;
+      heroControls.update(); heroRenderer.render(heroScene, heroCamera);
+      requestAnimationFrame(heroTick);
+    }
+    resizeHero(); addEventListener('resize', resizeHero); heroTick();
+
+    /* ---------- Shooting stars background (2D canvas) ---------- */
+    const starCanvas = document.getElementById('stars');
+    const ctx = starCanvas.getContext('2d');
+    const stars = []; const SHOOT_CHANCE = 0.005;
+    function resizeStars(){ starCanvas.width = innerWidth; starCanvas.height = innerHeight; }
+    function rand(a,b){ return Math.random()*(b-a)+a }
+    function initStars(){
+      stars.length=0; let n = Math.min(300, Math.floor(innerWidth*innerHeight/7000));
+      for(let i=0;i<n;i++){ stars.push({x:Math.random()*innerWidth, y:Math.random()*innerHeight, r:Math.random()*1.2+0.2, s:Math.random()*0.6+0.2}) }
+    }
+    function drawStars(){
+      ctx.clearRect(0,0,starCanvas.width, starCanvas.height);
+      ctx.globalCompositeOperation='lighter';
+      for(const st of stars){ ctx.beginPath(); ctx.arc(st.x,st.y,st.r,0,Math.PI*2); ctx.fillStyle='rgba(200,220,255,.8)'; ctx.fill(); st.x += st.s*0.1; if(st.x>innerWidth) st.x=0 }
+      if(Math.random()<SHOOT_CHANCE){ // shooting star
+        const sx = rand(0, innerWidth*0.8), sy = rand(0, innerHeight*0.4);
+        for(let t=0;t<1;t+=0.02){ ctx.beginPath(); ctx.arc(sx+t*180, sy+t*50, 1.2, 0, Math.PI*2); ctx.fillStyle='rgba(120,180,255,'+(1-t)+')'; ctx.fill() }
+      }
+      requestAnimationFrame(drawStars);
+    }
+    resizeStars(); initStars(); addEventListener('resize', ()=>{resizeStars(); initStars()}); drawStars();
+
+    /* ---------- Parallax bands ---------- */
+    const parallaxLayers = [document.getElementById('para1'), document.getElementById('para2'), document.getElementById('para3')];
+    addEventListener('scroll', ()=>{
+      const y = scrollY;
+      parallaxLayers.forEach((el, i)=>{ el.style.transform = `translateY(${y * (0.06 + i*0.02)}px)` });
+    }, {passive:true});
+
+    /* ---------- Search filter ---------- */
+    const searchInput = document.getElementById('search');
+    searchInput.addEventListener('input', ()=>{
+      const q = searchInput.value.toLowerCase().trim();
+      document.querySelectorAll('.fact').forEach(f=>{
+        const tags = (f.getAttribute('data-tags')||'').toLowerCase();
+        const text = f.textContent.toLowerCase();
+        f.style.display = (q==='' || tags.includes(q) || text.includes(q)) ? '' : 'none';
+      })
+    });
+
+    /* ---------- WebXR AR Launcher ---------- */
+    // Minimal AR session spawner. When a user taps an AR button, we start an AR session and allow tap-to-place.
+    // We create primitives for Moon/Mars and a stylized ISS. Textures are from Three.js examples CDN.
+
+    const MOON_TEX = 'https://threejs.org/examples/textures/planets/moon_1024.jpg';
+    const MARS_TEX = 'https://threejs.org/examples/textures/planets/mars_1k_color.jpg';
+
+    const xrOverlay = document.createElement('div');
+    Object.assign(xrOverlay.style, {position:'fixed', inset:'0', display:'none', placeItems:'center', background:'rgba(0,0,0,.25)', zIndex:60});
+    xrOverlay.innerHTML = `<div style="display:grid; place-items:center; gap:.6rem; padding:1rem 1.2rem; border-radius:14px; border:1px solid rgba(255,255,255,.2); background:rgba(6,7,20,.9); box-shadow:${'0 0 30px rgba(0,0,0,.5)'}">
+      <div style="font-family:Orbitron">AR Mode</div>
+      <button id="exitAr" class="ar-btn" style="justify-content:center">Exit AR</button>
+    </div>`;
+    document.body.appendChild(xrOverlay);
+
+    const arBtns = document.querySelectorAll('.ar-btn');
+    arBtns.forEach(btn=> btn.addEventListener('click', ()=> startAR(btn.dataset.ar)) );
+
+    let arRenderer, arScene, arCamera, reticle, hitTestSource=null, hitTestSourceRequested=false, placed=false, currentModel=null;
+
+    async function startAR(kind){
+      if(!navigator.xr){ alert('WebXR AR not supported on this device/browser. Try Chrome on Android.'); return; }
+
+      // Create renderer dedicated to AR
+      if(!arRenderer){ arRenderer = new THREE.WebGLRenderer({ antialias:true, alpha:true }); arRenderer.setPixelRatio(Math.min(devicePixelRatio,2)); arRenderer.xr.enabled = true; document.body.appendChild(arRenderer.domElement); }
+
+      arScene = new THREE.Scene();
+      arCamera = new THREE.PerspectiveCamera();
+      const hemi = new THREE.HemisphereLight(0xffffff, 0x222233, 1.0); arScene.add(hemi);
+
+      // Reticle (for plane hit-test)
+      reticle = new THREE.Mesh(
+        new THREE.RingGeometry(0.09, 0.1, 32).rotateX(-Math.PI/2),
+        new THREE.MeshBasicMaterial({ color:0x00d4ff })
+      );
+      reticle.matrixAutoUpdate = false; reticle.visible = false; arScene.add(reticle);
+
+      // Load model by kind
+      currentModel = buildModel(kind);
+      currentModel.visible = false; // only show after placed
+      arScene.add(currentModel);
+
+      // AR session
+      document.body.appendChild(ARButton.createButton(arRenderer, { requiredFeatures:['hit-test'], optionalFeatures:['dom-overlay'], domOverlay:{root: document.body} }));
+      xrOverlay.style.display = 'grid';
+      const btn = document.querySelector('.ar-button'); if(btn) btn.style.display='none';
+
+      arRenderer.setAnimationLoop(renderAR);
+
+      // Taps
+      window.addEventListener('click', onSelect);
+      document.getElementById('exitAr').onclick = endAR;
+
+      async function onSessionStart(){
+        const session = arRenderer.xr.getSession();
+        const viewerSpace = await session.requestReferenceSpace('viewer');
+        hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+        hitTestSourceRequested = true;
+        session.addEventListener('end', ()=>{ hitTestSourceRequested=false; hitTestSource=null; placed=false; if(arRenderer) arRenderer.setAnimationLoop(null); xrOverlay.style.display='none'; });
+      }
+
+      // wait a tick for session
+      setTimeout(onSessionStart, 100);
+
+      function renderAR(timestamp, frame){
+        const session = arRenderer.xr.getSession();
+        if(!frame || !session) { arRenderer.render(arScene, arCamera); return; }
+        const refSpace = arRenderer.xr.getReferenceSpace();
+        const hitTestResults = hitTestSource ? frame.getHitTestResults(hitTestSource) : [];
+        if(hitTestResults.length>0 && !placed){
+          const pose = hitTestResults[0].getPose(refSpace);
+          reticle.visible = true; reticle.matrix.fromArray(pose.transform.matrix);
+        } else {
+          reticle.visible = false;
+        }
+        arRenderer.render(arScene, arCamera);
+      }
+
+      function onSelect(){
+        if(!reticle || !reticle.visible || placed===true) return;
+        currentModel.position.setFromMatrixPosition(reticle.matrix);
+        currentModel.visible = true; placed = true;
+      }
+
+      function endAR(){
+        const session = arRenderer.xr.getSession(); if(session) session.end();
+      }
+    }
+
+    function buildModel(kind){
+      const group = new THREE.Group();
+      if(kind==='moon'){
+        const tex = new THREE.TextureLoader().load(MOON_TEX);
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.18, 48, 48), new THREE.MeshStandardMaterial({ map: tex }));
+        group.add(mesh);
+      } else if(kind==='mars'){
+        const tex = new THREE.TextureLoader().load(MARS_TEX);
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.22, 48, 48), new THREE.MeshStandardMaterial({ map: tex }));
+        group.add(mesh);
+      } else if(kind==='iss'){
+        // stylized ISS from primitives (lightweight)
+        const base = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.06), new THREE.MeshStandardMaterial({ color:0xd0d6ff, metalness:.3, roughness:.4 }));
+        group.add(base);
+        const panelMat = new THREE.MeshStandardMaterial({ color:0x2233ff, emissive:0x111133, metalness:.1, roughness:.6 });
+        const panelL = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.08, 0.34), panelMat); panelL.position.set(-0.11, 0, 0);
+        const panelR = panelL.clone(); panelR.position.set(0.11, 0, 0);
+        group.add(panelL, panelR);
+        const node = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.22, 16), new THREE.MeshStandardMaterial({color:0xffffff, metalness:.2, roughness:.4 }));
+        node.rotation.z = Math.PI/2; node.position.y = 0.05; group.add(node);
+      } else {
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), new THREE.MeshStandardMaterial({ color:0x8888ff }));
+        group.add(mesh);
+      }
+      group.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false } });
+      return group;
+    }
+  </script>
+</body>
+</html>
